@@ -878,6 +878,17 @@ def reveal_gene_pairs(
             all_pairs.append([])
             continue
         
+        # The adjacency projector operates on the full token sequence, including
+        # the five auxiliary prefix tokens and the trailing SEP token. Restrict
+        # decoding to the gene-only block before mapping matrix coordinates back
+        # to token positions.
+        aux_offset = 5
+        gene_end = prob_matrix.size(0) - 1  # exclude trailing SEP token
+        if gene_end <= aux_offset:
+            all_pairs.append([])
+            continue
+        prob_matrix = prob_matrix[aux_offset:gene_end, aux_offset:gene_end]
+
         # Apply sigmoid to convert logits to probabilities
         prob_matrix = torch.sigmoid(prob_matrix)
         
@@ -897,8 +908,6 @@ def reveal_gene_pairs(
         
         # Convert to gene names
         sample_pairs = []
-        # Offset by 5 to account for auxiliary tokens at start
-        aux_offset = 5
         
         for idx_i, idx_j in zip(filtered_i.tolist(), filtered_j.tolist()):
             # Map back to original token positions
